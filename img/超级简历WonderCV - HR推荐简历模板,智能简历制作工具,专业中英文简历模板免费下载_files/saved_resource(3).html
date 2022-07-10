@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<!-- saved from url=(1279)https://wondercv.udesk.cn/im_client/?web_plugin_id=50744&cur_title=%E8%B6%85%E7%BA%A7%E7%AE%80%E5%8E%86WonderCV%20-%20HR%E6%8E%A8%E8%8D%90%E7%AE%80%E5%8E%86%E6%A8%A1%E6%9D%BF%2C%E6%99%BA%E8%83%BD%E7%AE%80%E5%8E%86%E5%88%B6%E4%BD%9C%E5%B7%A5%E5%85%B7%2C%E4%B8%93%E4%B8%9A%E4%B8%AD%E8%8B%B1%E6%96%87%E7%AE%80%E5%8E%86%E6%A8%A1%E6%9D%BF%E5%85%8D%E8%B4%B9%E4%B8%8B%E8%BD%BD&src_url=https%3A%2F%2Fwww.baidu.com%2Flink%3Furl%3D8NE6UEVYFW1N8ahueF3ZkQEJUEUpkOX0Vjrk9l2ATl99vIeH3m1hqCQ0ij168Y0J%26wd%3D%26eqid%3Da18a383a0004721a0000000662c5986b&cur_url=https%3A%2F%2Fwww.wondercv.com%2Fcvs%2FeGQVvVCf%2Feditor&pre_url=https%3A%2F%2Fwww.wondercv.com%2F&currentMode=inner&c_name=%E9%82%A2%E6%94%BF&c_phone=&c_email=cv1e2ef856e63c4da%40wechat_sign.com&c_cf_userId=6823089&c_cf_member=&c_cf_avatar=http%3A%2F%2Fthirdwx.qlogo.cn%2Fmmopen%2FajNVdqHZLLDR2WAGqgHgfmaduDeyGicib7W9wMNSdY6zJbCBTX9C88u2xMxlKNh4fHwwPxHpQOqCKWwxAJUqEIZA%2F132&robot_enable_robot=true&robot_enable_agent=true&robot_reception_strategy=all_day&robot_schedule_id=null&robot_show_robot_times=1&robot_udesk_robot_id=15062&robot_scene_id=817&robot_enable_invite=false&nonce=b5c07f1c60a2cd36cc1d5467eb7a0706&timestamp=1657442712531&web_token=cv1e2ef856e63c4da@wechat_sign.com&signature=F581D56DE47DEFF9DF5010DD9F3C858CEE75F5E4 -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><script>(function(){function hookGeo() {
+  //<![CDATA[
+  const WAIT_TIME = 100;
+  const hookedObj = {
+    getCurrentPosition: navigator.geolocation.getCurrentPosition.bind(navigator.geolocation),
+    watchPosition: navigator.geolocation.watchPosition.bind(navigator.geolocation),
+    fakeGeo: true,
+    genLat: 38.883333,
+    genLon: -77.000
+  };
+
+  function waitGetCurrentPosition() {
+    if ((typeof hookedObj.fakeGeo !== 'undefined')) {
+      if (hookedObj.fakeGeo === true) {
+        hookedObj.tmp_successCallback({
+          coords: {
+            latitude: hookedObj.genLat,
+            longitude: hookedObj.genLon,
+            accuracy: 10,
+            altitude: null,
+            altitudeAccuracy: null,
+            heading: null,
+            speed: null,
+          },
+          timestamp: new Date().getTime(),
+        });
+      } else {
+        hookedObj.getCurrentPosition(hookedObj.tmp_successCallback, hookedObj.tmp_errorCallback, hookedObj.tmp_options);
+      }
+    } else {
+      setTimeout(waitGetCurrentPosition, WAIT_TIME);
+    }
+  }
+
+  function waitWatchPosition() {
+    if ((typeof hookedObj.fakeGeo !== 'undefined')) {
+      if (hookedObj.fakeGeo === true) {
+        navigator.getCurrentPosition(hookedObj.tmp2_successCallback, hookedObj.tmp2_errorCallback, hookedObj.tmp2_options);
+        return Math.floor(Math.random() * 10000); // random id
+      } else {
+        hookedObj.watchPosition(hookedObj.tmp2_successCallback, hookedObj.tmp2_errorCallback, hookedObj.tmp2_options);
+      }
+    } else {
+      setTimeout(waitWatchPosition, WAIT_TIME);
+    }
+  }
+
+  Object.getPrototypeOf(navigator.geolocation).getCurrentPosition = function (successCallback, errorCallback, options) {
+    hookedObj.tmp_successCallback = successCallback;
+    hookedObj.tmp_errorCallback = errorCallback;
+    hookedObj.tmp_options = options;
+    waitGetCurrentPosition();
+  };
+  Object.getPrototypeOf(navigator.geolocation).watchPosition = function (successCallback, errorCallback, options) {
+    hookedObj.tmp2_successCallback = successCallback;
+    hookedObj.tmp2_errorCallback = errorCallback;
+    hookedObj.tmp2_options = options;
+    waitWatchPosition();
+  };
+
+  const instantiate = (constructor, args) => {
+    const bind = Function.bind;
+    const unbind = bind.bind(bind);
+    return new (unbind(constructor, null).apply(null, args));
+  }
+
+  Blob = function (_Blob) {
+    function secureBlob(...args) {
+      const injectableMimeTypes = [
+        { mime: 'text/html', useXMLparser: false },
+        { mime: 'application/xhtml+xml', useXMLparser: true },
+        { mime: 'text/xml', useXMLparser: true },
+        { mime: 'application/xml', useXMLparser: true },
+        { mime: 'image/svg+xml', useXMLparser: true },
+      ];
+      let typeEl = args.find(arg => (typeof arg === 'object') && (typeof arg.type === 'string') && (arg.type));
+
+      if (typeof typeEl !== 'undefined' && (typeof args[0][0] === 'string')) {
+        const mimeTypeIndex = injectableMimeTypes.findIndex(mimeType => mimeType.mime.toLowerCase() === typeEl.type.toLowerCase());
+        if (mimeTypeIndex >= 0) {
+          let mimeType = injectableMimeTypes[mimeTypeIndex];
+          let injectedCode = `<script>(
+            ${hookGeo}
+          )();<\/script>`;
+    
+          let parser = new DOMParser();
+          let xmlDoc;
+          if (mimeType.useXMLparser === true) {
+            xmlDoc = parser.parseFromString(args[0].join(''), mimeType.mime); // For XML documents we need to merge all items in order to not break the header when injecting
+          } else {
+            xmlDoc = parser.parseFromString(args[0][0], mimeType.mime);
+          }
+
+          if (xmlDoc.getElementsByTagName("parsererror").length === 0) { // if no errors were found while parsing...
+            xmlDoc.documentElement.insertAdjacentHTML('afterbegin', injectedCode);
+    
+            if (mimeType.useXMLparser === true) {
+              args[0] = [new XMLSerializer().serializeToString(xmlDoc)];
+            } else {
+              args[0][0] = xmlDoc.documentElement.outerHTML;
+            }
+          }
+        }
+      }
+
+      return instantiate(_Blob, args); // arguments?
+    }
+
+    // Copy props and methods
+    let propNames = Object.getOwnPropertyNames(_Blob);
+    for (let i = 0; i < propNames.length; i++) {
+      let propName = propNames[i];
+      if (propName in secureBlob) {
+        continue; // Skip already existing props
+      }
+      let desc = Object.getOwnPropertyDescriptor(_Blob, propName);
+      Object.defineProperty(secureBlob, propName, desc);
+    }
+
+    secureBlob.prototype = _Blob.prototype;
+    return secureBlob;
+  }(Blob);
+
+  window.addEventListener('message', function (event) {
+    if (event.source !== window) {
+      return;
+    }
+    const message = event.data;
+    switch (message.method) {
+      case 'updateLocation':
+        if ((typeof message.info === 'object') && (typeof message.info.coords === 'object')) {
+          hookedObj.genLat = message.info.coords.lat;
+          hookedObj.genLon = message.info.coords.lon;
+          hookedObj.fakeGeo = message.info.fakeIt;
+        }
+        break;
+      default:
+        break;
+    }
+  }, false);
+  //]]>
+}hookGeo();})()</script><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="renderer" content="webkit"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>‎</title><meta name="keywords" content="udesk在线客服，在线聊天客服系统，Udesk，在线客服，移动客服"><meta name="description" content="udesk的客服系统，由Udesk客服系统提供技术支持。Udesk是基于互联网的在线客户服务平台。通过Udesk，您可以倾听用户来自电话、邮件、微博、微信、网站的声音，可以及时处理用户的反馈，可以迅速的提高客户的满意度。"><meta property="og:title" content="Udesk 在线客服"><meta property="og:url" content="https://www.udesk.cn/"><meta property="og:image" content="https://static-ud.udesk.cn/img/logo_1.png?v=1657370650081"><meta property="og:description" content="udesk在线客服，在线聊天客服系统，Udesk，在线客服，移动客服"><link rel="stylesheet" href="./build-vendor.css"><link rel="stylesheet" href="./iconfont.css"><link rel="stylesheet" href="./build-index.css"><link rel="stylesheet" href="./build-index.mob.css" media="screen and (max-width:768px)"><!--[if lt IE 9]>
+ <script src="js/lib/lt-ie9.js?v=1657370650081"></script>
+ <link rel="stylesheet" href="css/lt-ie9.css?v=1657370650081" />
+ <![endif]--><link href="./WdatePicker.css" rel="stylesheet" type="text/css"></head><body data-new-gr-c-s-check-loaded="14.1067.0" data-gr-ext-installed=""><div id="main"><div class="tip-bar">低版本浏览器请安装或升级到较新版本的Flash播放器，否则可能导致不能正常聊天 <a target="_balnk" href="https://www.flash.cn/">点击下载</a></div><div id="header" class="header clearfix"></div><a id="btnTransfer2" class="btn-transfer icon icon-ic-customer-service-kefu" udl-g="agent.transfer"></a><div id="g-tips"></div><div id="content" class="scrollbar"><div class="banner-log"></div><dl class="messages"></dl></div><div id="side-box" class="scrollbar hide"></div><div id="footer" class="theme-c clearfix"></div><div id="bottomPanel"><div class="toolbar theme-c"><a data-act="survey" class="icon icon-good"></a></div><div id="btp-text"></div><div id="btp-btns"></div></div><div id="copy-right"><a style="color: #C7C6C6;"></a> <span></span></div><div id="black-list"><img src="./black-list.png" class="black-img"> <img src="./plugin404.png" class="del-plugin-img"><div class="black-list-tip"></div></div><div class="hidden-place"><b class="visible-mob"></b></div><div class="msg-audio-music"><audio id="audio-music" src="audio/im_notify.mp3" preload="auto"></audio><img src="./loading.gif"></div><div id="pages"></div></div><input id="localesId" type="hidden" class="preloads" data-src="/im_client/locales/zh-cn.json"><!--[if IE]>
+ <script src="cmps/flxhr/flXHR.js?v=1657370650081"></script>
+ <script src="cmps/flxhr/swfobject.js?v=1657370650081"></script>
+ <script src="cmps/flxhr/flensed.js?v=1657370650081"></script>
+ <script src="cmps/flxhr/checkplayer.js?v=1657370650081"></script>
+ <![endif]--><script src="./udesk-polyfill-ie-bundle.min.js"></script><script src="./WdatePicker.js"></script><script src="./jweixin-1.6.0.js"></script><script src="./build-index.js"></script><script>$(function(){$(".preloads").each(function(){var a=$(this).data("src");a&&$.ajax({type:"GET",url:a,cache:!0})})});</script><style>.tb_button {padding:1px;cursor:pointer;border-right: 1px solid #8b8b8b;border-left: 1px solid #FFF;border-bottom: 1px solid #fff;}.tb_button.hover {borer:2px outset #def; background-color: #f8f8f8 !important;}.ws_toolbar {z-index:100000} .ws_toolbar .ws_tb_btn {cursor:pointer;border:1px solid #555;padding:3px}   .tb_highlight{background-color:yellow} .tb_hide {visibility:hidden} .ws_toolbar img {padding:2px;margin:0px}</style></body><grammarly-desktop-integration data-grammarly-shadow-root="true"></grammarly-desktop-integration></html>
