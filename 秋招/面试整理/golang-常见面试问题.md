@@ -1,7 +1,5 @@
 # Golang 常见面试问题
 
-在整理golang面试题的过程中，读过很多优秀
-
 ## 基本的数据结构
 
 ### go有哪些数据结构？
@@ -105,11 +103,39 @@ typedef dictEntry {
 
 ### sync.Map的实现原理
 
+## 核心原理
+
+### golang channel的实现原理？
+
+### golang 有哪些同步机制？实现原理？各自的适用范围？
+
+### golang defer的原理是什么?
+
+### golang panic 和 recover的原理是什么？
+
+### golang GC的基本原理，什么时候会发生GC？
+
+### 拓展：这种GC有什么优劣？和Java GC对比？和Python GC对比？
+
+### GMP 模型? 如何实现抢占式调度？调度过程发生了什么？
+
+### 拓展：操作系统是如何进行调度的？和golang有何异同？
+
+### 拓展：进程，线程，协程之间的区别？go协程有什么优势？
 
 ## go 的内存管理
 
-## golang 内存泄漏
+### 什么是内存泄漏，golang内存泄露在什么情况下会发生？什么是内存逃逸？
 
+### golang 的内存布局是什么样的？为什么这么做，好处或者坏处？
+
+## go框架
+
+### HTTP框架的实现原理是什么？
+
+### gin的实现原理是什么？为什么需要gin？
+
+### gorm的实现原理是什么？
 
 ## Reference
 [1] [go语言设计与实现](https://draveness.me/golang/)
