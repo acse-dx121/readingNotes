@@ -112,7 +112,7 @@ typedef dictEntry {
 
 **Redis Dict和Go map 的讨论** 两者的实现都非常类似，基于拉链法，只不过golang是使用桶（数组）+ 溢出桶来构建的，而redis实现的是基于链表的。两者扩容的过程中，都是利用了另外一个相同结构的数据结构来存储扩容之后的数据，并都不是原子操作，因此采用的是渐进式扩容，对数据进行迁移。在redis中，每次对字典进行添加、删除、查找或者更新操作时候，会顺带将原hash表上的rehashidx索引上的数据迁移到新表上，并同时操作两张表。而golang中，在写入和删除时候会出发runtime.growWork进行增量式的扩容。但是两者在查找过程有些差异，go利用了tophash来加快了桶内的查找，而redis没有做类似的优化。 
 
-### sync.Map的实现原理
+### sync.Map的实现原理[3]
 
 原生的golang Map不支持并发写入，如果并发写的话会出发fatal。解决这个问题的方法之一是加一把大锁，用sync.Mutex 来保护防止同时写入。而
 golang在v1.9 版本之后加入了官方实现的sync.Map，它是一个并发安全的Map，可以支持并发写入。
@@ -131,9 +131,11 @@ type readOnly struct {
 
 ```
 
-注意到sync.Map的实现原理，他本质是上是分离了两个部分去操作。
+注意到sync.Map的实现原理，他本质是上是分离了两个s部分去操作。一个只读的map(atomic.Value: 需要硬件支持,在intel芯片上的汇编命令是cmpxchg)，一个是map - dirty，用于存储最新的数据。
 
+**查找**的时候，先从read中查找，如果没有找到并且read和dirty不一样时，则从dirty中查找，并且将miss+1。如果都没有找到，则返回nil。如果miss达到一定值，则将dirty升级为read。
 
+TODO: 
 
 ## 核心原理
 
@@ -148,6 +150,21 @@ type readOnly struct {
 ### golang GC的基本原理，什么时候会发生GC？
 
 ### 拓展：这种GC有什么优劣？和Java GC对比？和Python GC对比？
+
+### golang 函数调用？
+go 语言中所有的函数参数都是值传递。对于函数参数的调用惯例来说，和c语言有很大的区别。在c语言中，函数可以有多个形参，以及一个返回值，不支持多返回值。c语言中，函数形参大部分是分配在寄存器上的，多余的参数会分配在栈上。而返回值按照惯例来说是存放在eax寄存器上。而golang有很大不同，不论是函数形参还是返回值，golang都是分配在栈上，因此可以支持多返回值，并且平台相关性低。
+
+**go 语言设计与实现 - 第二章**
+ C 语言和 Go 语言在设计函数的调用惯例时选择了不同的实现。C 语言同时使用寄存器和栈传递参数，使用 eax 寄存器传递返回值；而 Go 语言使用栈传递参数和返回值。我们可以对比一下这两种设计的优点和缺点：
+- C 语言的方式能够极大地减少函数调用的额外开销，但是也增加了实现的复杂度；
+    - CPU 访问栈的开销比访问寄存器高几十倍；
+    - 需要单独处理函数参数过多的情况；
+- Go 语言的方式能够降低实现的复杂度并支持多返回值，但是牺牲了函数调用的性能；
+- 不需要考虑超过寄存器数量的参数应该如何传递；
+- 不需要考虑不同架构上的寄存器差异；
+- 函数入参和出参的内存空间需要在栈上进行分配；
+
+Go 语言使用栈作为参数和返回值传递的方法是综合考虑后的设计，选择这种设计意味着编译器会更加简单、更容易维护。
 
 ### GMP 模型? 如何实现抢占式调度？调度过程发生了什么？
 
@@ -175,4 +192,6 @@ type readOnly struct {
 [2] [Redis 设计与实现](https://www.baidu.com/s?wd=redis%20%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0&rsv_spt=1&rsv_iqid=0xbcbe594e0002439c&issp=1&f=8&rsv_bp=1&rsv_idx=2&ie=utf-8&tn=baiduhome_pg&rsv_dl=tb&rsv_enter=1&rsv_sug3=23&rsv_sug1=6&rsv_sug7=100&rsv_sug2=0&rsv_btype=i&inputT=3051&rsv_sug4=3051)
 
 [3] [由浅入深聊聊golang sync.Map](https://blog.csdn.net/u011957758/article/details/96633984)
+
+[4] [深入研究goroutine栈](https://studygolang.com/articles/22010)
 
