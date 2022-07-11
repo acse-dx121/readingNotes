@@ -29,6 +29,10 @@ struct SDS {
 
  **SDS扩容** SDS 如果修改后的字符串大小小于1MB，那么分配一个同样大小的free空间。本质上等价于双倍扩容。如果大于1MB，那么free固定于1MB。
 
+**为什么不直接在已分配的内存后面加内存呢？** 
+1. 和操作系统的内存管理有关，不能简单的在后面加内存。TODO：详细说说
+2. 可能会占用其他重要部分的内存。
+
 ### Golang map的实现原理 与 Redis Dict比较
 
 golang map中主要由以下数据结构组成:
@@ -92,16 +96,44 @@ typedef struct dictht {
 
 typedef dictEntry {
     void *key; // 键
-    ...
-}
+    union{
+        void *val; // 值
+        uint64_t u64; // 值
+        int64_t s64; // 值
+    }v;
+
+    // 指向下一个hash表的节点，形成链表
+    struct dictEntry *next;
+} dictEntry;
 ```
 可视化的标识如下. redis的字典实现比较直观，由两个dictht数组构成，其中一个代表正在使用的hash表，另一个在需要扩容或者缩容的时候使用。当redis执行扩容的时候，会将原来的hash表拷贝到一个新的hash表中，然后将原来的hash表指针指向新的hash表。但是值得注意的是，3.0版本的redis是单线程的，因此如果花费大量时间在扩容上，可能造成服务短暂不可用。因此采用所谓的渐进式hash的方法进行操作，即在redis执行操作的时候，redis会顺带讲ht0上的数据迁移到ht1上。这种操作类似于
 
 ![dict-map](../../img/redis-dict.png)
 
-**Redis Dict和Go map 的讨论** 两者的实现都非常类似，基于拉链法，只不过golang是使用桶（数组）+ 溢出桶来构建的，而redis实现的是基于链表的。两者扩容的过程中，都是利用了另外一个相同结构的数据结构，并都不是原子的，而是渐进性的扩容。但是查找过程有些差异，go利用了tophash来加快了桶内的查找，而redis没有做类似的优化。 
+**Redis Dict和Go map 的讨论** 两者的实现都非常类似，基于拉链法，只不过golang是使用桶（数组）+ 溢出桶来构建的，而redis实现的是基于链表的。两者扩容的过程中，都是利用了另外一个相同结构的数据结构来存储扩容之后的数据，并都不是原子操作，因此采用的是渐进式扩容，对数据进行迁移。在redis中，每次对字典进行添加、删除、查找或者更新操作时候，会顺带将原hash表上的rehashidx索引上的数据迁移到新表上，并同时操作两张表。而golang中，在写入和删除时候会出发runtime.growWork进行增量式的扩容。但是两者在查找过程有些差异，go利用了tophash来加快了桶内的查找，而redis没有做类似的优化。 
 
 ### sync.Map的实现原理
+
+原生的golang Map不支持并发写入，如果并发写的话会出发fatal。解决这个问题的方法之一是加一把大锁，用sync.Mutex 来保护防止同时写入。而
+golang在v1.9 版本之后加入了官方实现的sync.Map，它是一个并发安全的Map，可以支持并发写入。
+```golang
+type Map struct {
+	mu Mutex // 加锁作用。保护后文的dirty字段
+	read atomic.Value // readOnly 存读的数据。因为是atomic.Value类型，只读，所以并发是安全的。实际存的是readOnly的数据结构。
+	dirty map[interface{}]*entry //包含最新写入的数据。当misses计数达到一定值，将其赋值给read。
+	misses int //计数作用。每次从read中读失败，则计数+1。
+}
+
+type readOnly struct {
+    m  map[interface{}]*entry //单纯的map结构
+    amended bool //Map.dirty的数据和这里的 m 中的数据不一样的时候，为true 
+}
+
+```
+
+注意到sync.Map的实现原理，他本质是上是分离了两个部分去操作。
+
+
 
 ## 核心原理
 
