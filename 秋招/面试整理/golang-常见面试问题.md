@@ -141,13 +141,80 @@ TODO:
 
 ### golang channel的实现原理？
 
-FIFO
+本质上是由数组+双指针构成循环数组，加上锁和两个阻塞队列构成。runtime.hchan 结构体中的五个字段 qcount、dataqsiz、buf、sendx、recv 构建底层的循环队列：
+
+- qcount — Channel 中的元素个数；
+- dataqsiz — Channel 中的循环队列的长度；
+- buf — Channel 的缓冲区数据指针；
+- sendx — Channel 的发送操作处理到的位置；
+- recvx — Channel 的接收操作处理到的位置；
+
+**发送** 我们在这里可以简单梳理和总结一下使用 ch <- i 表达式向 Channel 发送数据时遇到的几种情况：
+- 如果当前 Channel 的 recvq 上存在已经被阻塞的 Goroutine，那么会直接将数据发送给当前 Goroutine 并将其设置成下一个运行的 Goroutine, 直接将发送内容拷贝到目标地址上；
+- 如果 Channel 存在缓冲区并且其中还有空闲的容量，我们会直接将数据存储到缓冲区 sendx 所在的位置上；
+- 如果不满足上面的两种情况，会创建一个 runtime.sudog 结构并将其加入 Channel 的 sendq 队列中，当前 Goroutine 也会陷入阻塞等待其他的协程从 Channel 接收数据；
+
+发送数据的过程中包含几个会触发 Goroutine 调度的时机：
+- 发送数据时发现 Channel 上存在等待接收数据的 Goroutine，立刻设置处理器的 runnext 属性，但是并不会立刻触发调度；
+- 发送数据时并没有找到接收方并且缓冲区已经满了，这时会将自己加入 Channel 的 sendq 队列并调用 runtime.goparkunlock 触发 Goroutine 的调度让出处理器的使用权；
+
+**接收** 我们梳理一下从 Channel 中接收数据时可能会发生的五种情况：
+- 如果 Channel 为空，那么会直接调用 runtime.gopark 挂起当前 Goroutine；
+- 如果 Channel 已经关闭并且缓冲区没有任何数据，runtime.chanrecv 会直接返回；
+- 如果 Channel 的 sendq 队列中存在挂起的 Goroutine，会将 recvx 索引所在的数据拷贝到接收变量所在的内存空间上并将 sendq 队列中 Goroutine 的数据拷贝到缓冲区；
+- 如果 Channel 的缓冲区中包含数据，那么直接读取 recvx 索引对应的数据；
+- 在默认情况下会挂起当前的 Goroutine，将 runtime.sudog 结构加入 recvq 队列并陷入休眠等待调度器的唤醒；
+
+我们总结一下从 Channel 接收数据时，会触发 Goroutine 调度的两个时机：
+- 当 Channel 为空时；
+- 当缓冲区中不存在数据并且也不存在数据的发送者时；
+
+**可能会panic的时机** 
+- close一个已经关闭的或者为空Channel，会panic；
+- 向一个已经关闭的Channel发送数据，会panic；
 
 ### golang 有哪些同步机制？实现原理？各自的适用范围？
 
 ### golang defer的原理是什么?
 
+**关键现象** defer的调用链是一个链表式的结构，后申明的defer函数会插入到调用链的开头，因此是先进后出的原则。另一个被称为预计算参数。
+
+defer 关键字的实现主要依靠编译器和运行时的协作，我们总结一下本节提到的三种机制：
+- 堆上分配 · 1.1 ~ 1.12
+    - 编译期将 defer 关键字转换成 runtime.deferproc 并在调用 defer 关键字的函数返回之前插入 runtime.deferreturn；
+    - 运行时调用 runtime.deferproc 会将一个新的 runtime._defer 结构体追加到当前 Goroutine 的链表头；
+    - 运行时调用 runtime.deferreturn 会从 Goroutine 的链表中取出 runtime._defer 结构并依次执行；
+- 栈上分配 · 1.13
+    - 当该关键字在函数体中最多执行一次时，编译期间的 cmd/compile/internal/gc.state.call 会将结构体分配到栈上并调用 runtime.deferprocStack；
+- 开放编码 · 1.14 ~ 现在
+    - 编译期间判断 defer 关键字、return 语句的个数确定是否开启开放编码优化；
+    - 通过 deferBits 和 cmd/compile/internal/gc.openDeferInfo 存储 defer 关键字的相关信息；
+    - 如果 defer 关键字的执行可以在编译期间确定，会在函数返回前直接插入相应的代码，否则会由运行时的 runtime.deferreturn 处理；
+
+
+我们在本节前面提到的两个现象在这里也可以解释清楚了：
+- 后调用的 defer 函数会先执行：
+    - 后调用的 defer 函数会被追加到 Goroutine _defer 链表的最前面；
+    - 运行 runtime._defer 时是从前到后依次执行；
+- 函数的参数会被预先计算；
+    - 调用 runtime.deferproc 函数创建新的延迟调用时就会立刻拷贝函数的参数，函数的参数不会等到真正执行时计算；
+
+
 ### golang panic 和 recover的原理是什么？
+
+分析程序的崩溃和恢复过程比较棘手，代码不是特别容易理解。我们在本节的最后还是简单总结一下程序崩溃和恢复的过程：
+- 编译器会负责做转换关键字的工作；
+    - 将 panic 和 recover 分别转换成 runtime.gopanic 和 runtime.gorecover；
+    - 将 defer 转换成 runtime.deferproc 函数；
+    - 在调用 defer 的函数末尾调用 runtime.deferreturn 函数；
+- 在运行过程中遇到 runtime.gopanic 方法时，会从 Goroutine 的链表依次取出 runtime._defer 结构体并执行；
+- 如果调用延迟执行函数时遇到了 runtime.gorecover 就会将 _panic.recovered 标记成 true 并返回 panic 的参数；
+    - 在这次调用结束之后，runtime.gopanic 会从 runtime._defer 结构体中取出程序计数器 pc 和栈指针 sp 并调用 runtime.recovery 函数进行恢复程序；
+    - runtime.recovery 会根据传入的 pc 和 sp 跳转回 runtime.deferproc；
+    - 编译器自动生成的代码会发现 runtime.deferproc 的返回值不为 0，这时会跳回 runtime.deferreturn 并恢复到正常的执行流程；
+- 如果没有遇到 runtime.gorecover 就会依次遍历所有的 runtime._defer，并在最后调用 runtime.fatalpanic 中止程序、打印 panic 的参数并返回错误码 2；
+
+分析的过程涉及了很多语言底层的知识，源代码阅读起来也比较晦涩，其中充斥着反常规的控制流程，通过程序计数器来回跳转，不过对于我们理解程序的执行流程还是很有帮助。
 
 ### golang GC的基本原理，什么时候会发生GC？
 
