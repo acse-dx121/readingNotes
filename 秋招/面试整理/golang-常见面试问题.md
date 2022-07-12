@@ -141,6 +141,8 @@ TODO:
 
 ### golang channel的实现原理？
 
+FIFO
+
 ### golang 有哪些同步机制？实现原理？各自的适用范围？
 
 ### golang defer的原理是什么?
@@ -166,11 +168,34 @@ go 语言中所有的函数参数都是值传递。对于函数参数的调用�
 
 Go 语言使用栈作为参数和返回值传递的方法是综合考虑后的设计，选择这种设计意味着编译器会更加简单、更容易维护。
 
+![c_function_call_stack](../../img/c_function_call_stack.png)
+![golang_fucntion_call_stack](../../img/golang_function_call_stack.png)
+
+
+**go 协程的栈桢** 在runtime/stack.go中，有一段注释表明了在x86架构下的栈帧布局。也就是说在 x86架构下，golang栈帧布局从上（高地址）到下（低地址）依次为：这个函数帧的调用者传入的参数， 这个函数帧的返回地址，调用者调用时的BP快照（见上文FP用法原理），该帧本地变量，该帧调用其它函数需要传递的参数。
+
+```golang
+// Stack frame layout
+//
+// (x86)
+// +------------------+
+// | args from caller |
+// +------------------+ <- frame->argp
+// |  return address  |
+// +------------------+
+// |  caller's BP (*) | (*) if framepointer_enabled && varp < sp
+// +------------------+ <- frame->varp
+// |     locals       |
+// +------------------+
+// |  args to callee  |
+// +------------------+ <- frame->sp
+```
+
 ### GMP 模型? 如何实现抢占式调度？调度过程发生了什么？
 
-### 拓展：操作系统是如何进行调度的？和golang有何异同？
-
 ### 拓展：进程，线程，协程之间的区别？go协程有什么优势？
+
+### 拓展：操作系统是如何进行调度的？和golang有何异同？
 
 ## go 的内存管理
 
