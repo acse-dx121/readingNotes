@@ -29,10 +29,6 @@ struct SDS {
 
  **SDS扩容** SDS 如果修改后的字符串大小小于1MB，那么分配一个同样大小的free空间。本质上等价于双倍扩容。如果大于1MB，那么free固定于1MB。
 
-**为什么不直接在已分配的内存后面加内存呢？** 
-1. 和操作系统的内存管理有关，不能简单的在后面加内存。TODO：详细说说
-2. 可能会占用其他重要部分的内存。
-
 ### Golang map的实现原理 与 Redis Dict比较
 
 golang map中主要由以下数据结构组成:
@@ -135,7 +131,6 @@ type readOnly struct {
 
 **查找**的时候，先从read中查找，如果没有找到并且read和dirty不一样时，则从dirty中查找，并且将miss+1。如果都没有找到，则返回nil。如果miss达到一定值，则将dirty升级为read。
 
-TODO: 
 
 ## 核心原理
 
